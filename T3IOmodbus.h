@@ -188,7 +188,7 @@ enum {
 
 
 	FLASH_REVERSE_OUTPUT,
-
+	FLASH_SERINALNUMBER_WRITE_FLAG ,
 	MAX_FLASH_CONSTRANGE,
 
 	CALIBRATION_STORAGE_LOCATION = 300,	// flash data, in modbus will start at 300
@@ -383,8 +383,8 @@ enum {
 	T38IO_INPUT6_TIMER_LEFT,
 	T38IO_INPUT7_TIMER_LEFT,
 	T38IO_INPUT8_TIMER_LEFT,
-  T38IO_INPUT9_TIMER_LEFT,
-  T38IO_INPUT10_TIMER_LEFT,   //239
+  	T38IO_INPUT9_TIMER_LEFT,
+  	T38IO_INPUT10_TIMER_LEFT,   //239
 
  	T38IO_OUTPUT_MANUAL,				//240 light control disable/enable ,each bit correspond to one output
 										//	  output1 correspond to least significant bit,0 = disable,1 = enable
@@ -413,7 +413,7 @@ enum {
 	T38IO_STATUS_OUTPUT7,
 	T38IO_STATUS_OUTPUT8,
     //264
-
+	T38IO_SERINALNUMBER_WRITE_FLAG,
 	TEST_REGISTER   = 299 
 /*	TT1,  // for test registers added by chelsea
 	TT2,

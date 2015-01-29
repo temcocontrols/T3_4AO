@@ -45,7 +45,7 @@ unsigned char xdata SNWriteflag ;	// from LSB, low byte SN write
 
 extern unsigned char xdata reading_filter_bypass;
 #ifdef T3_8IN13OUT //MHF 2001_07, CHANGE IFDEFS TO USE ONLY ONE DEFINE FOR EACH MODEL
-extern unsigned int channel_type;
+extern unsigned int xdata channel_type;
 unsigned char xdata pulse_number[50];// 
 typedef union   pulse_number_link {
 		unsigned long      number_long[8];
@@ -95,7 +95,7 @@ unsigned char xdata gucSetChannel;
 
 extern bit WritePicCommand(unsigned char channel);
 unsigned char   clear_pulse_channel = 0;
-extern unsigned int channel_type ;
+extern unsigned int xdata channel_type ;
 extern bit WritePicType(unsigned char channelType);
 
 // --- function prototype main program -----------------------------------

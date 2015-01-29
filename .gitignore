@@ -1,4 +1,11 @@
 
+*.hex
+*.uvopt
 *.bak
-*.OBJ
+*.lnp
+*.M51
 *.LST
+*.OBJ
+*.OBJ
+*.hex
+*.lnp

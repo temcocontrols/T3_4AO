@@ -766,8 +766,8 @@ bit flash_read_char(unsigned char id, unsigned char *value, unsigned char block_
 	{
 //		*value = *(ptr + 2);
 //		*value <<= 8;
-//		*value += *(ptr + 2);
-		*value = *(ptr + 2);	// return a char
+//		*value += *(ptr + 3);
+		*value = *(ptr + 3);	// return a char
 		return 1;	// return a true to indicate value was found
 	}
 

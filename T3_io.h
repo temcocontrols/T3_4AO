@@ -225,7 +225,7 @@ extern void read_pic(void);
 
  
 extern void read_pulse_pic(void);
-unsigned int channel_type = 0  ;
+unsigned int xdata channel_type = 0  ;
 extern bit WritePicType(unsigned char channelType);
 
 

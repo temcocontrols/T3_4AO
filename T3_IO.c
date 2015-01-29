@@ -4,6 +4,7 @@
 #include "T3_IO.h"
 #include "math.h"		// to use the abs function, August Ron
 #include  "pic.h"
+extern unsigned char xdata com_beat ;
  unsigned char xdata filter[10];
 //unsigned char xdata gucPreviousInput[8] _at_ 0x2F0;
 unsigned char xdata gucPreviousInput[10];
@@ -103,6 +104,16 @@ void UART0_Init(void)
         EIE2 &= ~0x04;
 		SERIAL_RECEIVE_TIMEOUT = 6;
 	}
+	else if(info[15] == 3)
+	{   SFRPAGE   = TMR4_PAGE;
+        TMR4CN    = 0x00; 
+        TMR4CF    = 0x08; //user SYSCLK
+        RCAP4H = 0xFF;
+        RCAP4L = 0XF4;
+        TR4= 1;            //start timer
+        EIE2 &= ~0x04;
+		SERIAL_RECEIVE_TIMEOUT = 6;
+	}
 
     SFRPAGE   = UART0_PAGE;
     SCON0     = 0x50;   // mode 1:  set uart0 as 9bit uart  fixed baud rate . enable receive
@@ -152,8 +163,7 @@ void ADC_Init(void)
    char SFRPAGE_SAVE = SFRPAGE;        // Save Current SFR page
    SFRPAGE = ADC0_PAGE;
    ADC0CN = 0x8C;  //set ADC start bye timer2 overflow  right-justified
-   ADC0CF = ((SYSCLK/2500000) - 1) << 3; // ADC conversion clock = 2.5MHz
-   // set  amplifier gain as 1  //ADC conversion clock =1.25Mhz
+  // ADC0CF = ((SYSCLK/2500000) - 1) << 3; // ADC conversion clock = 2.5MHz
    ADC0CF=0x00;//2011.01.13
    AMX0SL = 0x00; //set all AD conversion as single input
    ADC0L = 0;
@@ -165,7 +175,7 @@ void ADC_Init(void)
 
    //#if 0
    SFRPAGE = ADC2_PAGE;      //set ADC start bye timer2 overflow  
-    ADC2CN= 0x86;  // set ADC2 Start  by  write 1 of adc2busy
+   ADC2CN= 0x86;  // set ADC2 Start  by  write 1 of adc2busy
    ADC2CF = (((SYSCLK/2500000) - 1) << 3) + 1; // ADC conversion clock = 2.5MHz    gain=1
    
    AMX2SL = 0x06;   
@@ -173,7 +183,7 @@ void ADC_Init(void)
    SFRPAGE = LEGACY_PAGE;
    REF0CN = 0x03;
    EIE2 |= 0x10;                             
-  EIP2 |= 0x10;
+   EIP2 |= 0x10;
    SFRPAGE = SFRPAGE_SAVE;
 }
 #endif
@@ -189,7 +199,7 @@ void DAC_Init(void)
    RCAP3H = 0xFF; //RCAP4 = -(SYSCLK/SAMPLE PULSE);
    
    TMR3L = 0x92;  // Set time 50 US
-   TMR3H = 0xFF;  // Set time 30 US
+   TMR3H = 0xFF;  
 
     //TMR3H = 0xff;
    EIE2 |= 0x01; //enable the timer3  interrupt 
@@ -199,11 +209,11 @@ void DAC_Init(void)
    SFRPAGE = DAC0_PAGE;
    DAC0CN = 0x88; //1000 1000 DAC0 enable  output update occur Timer3 overflow
    SFRPAGE = LEGACY_PAGE;
-   REF0CN |= 0x03;    // select VREF 3.3V
+   REF0CN |= 0x03;    // select VREF 3V
    SFRPAGE = DAC1_PAGE;
    DAC1CN = 0x88;   //1000  1000 DAC1 enable  output update occur Timer3 overflow
    SFRPAGE = LEGACY_PAGE;
-   REF0CN |= 0x03;   //select VREF 3.3V
+   REF0CN |= 0x03;   //select VREF 3V
    SFRPAGE = SFRPAGE_SAVE;
 }
 #endif
@@ -259,6 +269,7 @@ void Main_System_Init(void)
 
 void timer0(void) interrupt 1 
 {
+	static unsigned int xdata com_count =0; 
    char SFRPAGE_SAVE = SFRPAGE;        // Save Current SFR page 
    TL0 = 0x66;     //interal :1ms
    TH0 = 0xfc;
@@ -279,6 +290,12 @@ void timer0(void) interrupt 1
      LED_bank = 1;  
    }
   refresh_LEDs();
+  com_count++ ;
+  if(com_count>= 12000)
+	{
+		com_count = 0 ;
+		com_beat++ ;
+	}
   // High_speed_count = ~High_speed_count;
    SFRPAGE   = CONFIG_PAGE;
   // read_pic();
@@ -368,9 +385,10 @@ void delay_us (unsigned	int time)
 void main_flash_init(void)                              
 {
 	unsigned int xdata	pulse_buf ;
+	unsigned char xdata  i ;
 	if(!flash_read_int(FLASH_SOFTWARE_VERSION_NUMBER , &pulse_buf, FLASH_MEMORY))
 	{
-	 	info[5] = 23;	
+	 	info[5] = 24;	
 		flash_write_int(FLASH_SOFTWARE_VERSION_NUMBER, info[5], FLASH_MEMORY);   
 	}
 	else
@@ -380,15 +398,26 @@ void main_flash_init(void)
 		{
 			baudrate_flag = 1 ;	
 		}   
-	}	  
-  flash_write_int(FLASH_SOFTWARE_VERSION_NUMBER, 23, FLASH_MEMORY);
+	}
+	 for(i =0 ; i<4 ; i++)
+	 {
+	 	if(!flash_read_int(FLASH_SERIALNUMBER_LOWORD + i , &pulse_buf, FLASH_MEMORY))
+		{
+			pulse_buf = 0 ;
+			flash_write_int(FLASH_SERIALNUMBER_LOWORD + i, pulse_buf, FLASH_MEMORY);  	
+		}	
+	 }
+	if(!flash_read_int(FLASH_SERINALNUMBER_WRITE_FLAG , &pulse_buf, FLASH_MEMORY))
+	{
+	 	pulse_buf = 0;	
+		flash_write_int(FLASH_SERINALNUMBER_WRITE_FLAG, pulse_buf, FLASH_MEMORY);   
+	}
+	SNWriteflag = pulse_buf;	  
+  flash_write_int(FLASH_SOFTWARE_VERSION_NUMBER, 28, FLASH_MEMORY);
   flash_write_int(FLASH_PRODUCT_MODEL, 28, FLASH_MEMORY);
   flash_write_int(FLASH_HARDWARE_REV,14, FLASH_MEMORY);
   flash_write_int(FLASH_PIC_VERSION, 1, FLASH_MEMORY);
-  flash_write_int(FLASH_SERIALNUMBER_LOWORD, 255, FLASH_MEMORY);
-  flash_write_int(FLASH_SERIALNUMBER_LOWORD+1, 255, FLASH_MEMORY);
-  flash_write_int(FLASH_SERIALNUMBER_LOWORD+2, 255, FLASH_MEMORY) ;
-  flash_write_int(FLASH_SERIALNUMBER_LOWORD+3, 255, FLASH_MEMORY) ;
+
   flash_write_int(EEPROM_VERSION_NUMBER, 0, FLASH_MEMORY) ;
 }
 
@@ -401,15 +430,15 @@ void Main_Data_init(void)
 
   SFRPAGE = CONFIG_PAGE;
 	watchdog();	
-  RELAY0 = 0;
-  RELAY1 = 0;
-  RELAY2 = 0;
-  RELAY3 = 0;
-
-  RELAY4 = 0;
-  RELAY5 = 0;
-  RELAY6 = 0;
-  RELAY7 = 0; 
+	  RELAY0 = 0;
+	  RELAY1 = 0;
+	  RELAY2 = 0;
+	  RELAY3 = 0;
+	
+	  RELAY4 = 0;
+	  RELAY5 = 0;
+	  RELAY6 = 0;
+	  RELAY7 = 0; 
      
 	KEYPAD_HAND = 1;
 	KEYPAD_AUTO = 1;
@@ -474,7 +503,7 @@ void Main_Data_init(void)
 		
 	}
 
-   dac = 0;
+  dac = 0;
   High_speed_count = 0;
   D16_Flash = 0;
   SFRPAGE = LEGACY_PAGE;
@@ -491,11 +520,8 @@ void Main_Data_init(void)
            { 
            pulse_buf= 20;
            flash_write_int(FLASH_INPUT1_FILTER + Loop, 20, FLASH_MEMORY);
-           }
-        
-        
-           filter[Loop]=pulse_buf;
-        
+           }               
+           filter[Loop]=pulse_buf;       
  } 
 
   for(Loop = 0;Loop < 12;Loop++)
@@ -526,22 +552,19 @@ void Main_Data_init(void)
     Swtich_state[Loop] = 0;
    
   }               
-
-    for(Loop = 0;Loop < 10;Loop++) //input
+   for(Loop = 0;Loop < 10;Loop++) //input
 	{	
 		if(!flash_read_int(FLASH_INPUT1_RANGE + Loop,&pulse_buf,FLASH_MEMORY))			 
 			range[Loop] = 0;	
 		else
 		{
-			if(pulse_buf > 7)
-			pulse_buf = 0;
-	 		range[Loop] = pulse_buf;
-			if(range[Loop] == 6)  SetBit(Loop,&channel_type);
+			range[Loop] = pulse_buf;
+			if(range[Loop] == PULSE)  
+			{
+				SetBit(Loop,  &channel_type);
+			}
 		}	
-	}
-   
-
-  
+	}  
   	if(!flash_read_int(FLASH_OUTPUT_MANUAL,&guiManual,FLASH_MEMORY))
 	{
 	 	guiManual = 0;	
@@ -564,8 +587,7 @@ void Main_Data_init(void)
            flash_write_int(FLASH_START_PULSE + Loop , pulse.half[Loop], FLASH_MEMORY);
          } 
 
-    }
-  
+    } 
   for(Loop = 0;Loop < 8;Loop++) //input
 	{	
 		if(!flash_read_int(FLASH_ZONE_OUTPUT1 + Loop, &pulse_buf ,FLASH_MEMORY))			 
@@ -578,15 +600,13 @@ void Main_Data_init(void)
 
 		}
     }
-
-  
- 	if(!flash_read_int(FLASH_CHANNEL_TYPE,&pulse_buf,FLASH_MEMORY))			 
+ 	/*if(!flash_read_int(FLASH_CHANNEL_TYPE,&pulse_buf,FLASH_MEMORY))			 
 	   channel_type = 0;
 	else
   	 {
      channel_type = pulse_buf & 0x3ff;
      flash_write_int(FLASH_CHANNEL_TYPE,channel_type,FLASH_MEMORY);
-     }
+     } */
 	start_timer(REFRESH_INPUTS , DEFAULT_TIMEOUT );
 	start_timer(STORE_PULSE,DEFAULT_TIMEOUT);
  	start_timer(REFRESH_OUTPUTS , DEFAULT_TIMEOUT );
@@ -1035,16 +1055,16 @@ void check_switches(void)
 	//if(Result1 == Result2)
       if((Result1 == (BIT0 << Loop)) && (Result2 == (BIT0 << Loop)))
       {
-            Switch_state_buffer[Loop] = SW_OFF;
+         Switch_state_buffer[Loop] = SW_OFF;
       }
       else if(Result1 == (BIT0 << Loop)) // from 1 to 0
-        {
+      {
         Switch_state_buffer[Loop] = SW_HAND;
-        }
-        else if(Result2 == (BIT0 << Loop)) // from 0 to 1 
-        {
+      }
+      else if(Result2 == (BIT0 << Loop)) // from 0 to 1 
+      {
         Switch_state_buffer[Loop] = SW_AUTO;
-        }
+      }
   } 
 
   SFRPAGE = SFRPAGE_SAVE;
@@ -1110,9 +1130,9 @@ void ADC0_ISR(void) interrupt 15
    switch(AD_Enable)
      {
           case AI0:  //if((channel_type & 0x01) !=1)
-                     if((channel_type & 0x200) !=0x200)
+                  if((channel_type & 0x200) !=0x200)
                   {       
-                      Adc_data[9] =  ADC0 ;
+                      Adc_data[9] =  ADC0;
                       guiBuffer[9][itemp] = ADC0;
                       itemp++;
                       if(itemp >= SAMPLENUMBER)
@@ -1217,6 +1237,7 @@ void ADC0_ISR(void) interrupt 15
                         AD_Enable = AI4; 
                         AMX0SL = 0x04;
                       }
+					  guiBuffer_old[7] = guiBuffer_new;
                       break;
                    }
                    else
@@ -1668,17 +1689,17 @@ void tabulate_LED_STATE(void)    //add modbus data;
 	       modbus_data[8] = 0;
          }
       else if(Switch_state_buffer[8] == 1)
-         {
-         LED_State[1] = LED_State[1] >> 1;
+	     {
+	       LED_State[1] = LED_State[1] >> 1;
 	       modbus_data[8] = 4095;
-         }
-       else if(Switch_state_buffer[8] == 2)
-      {
-         if(modbus_data[8] > 2048)
-           LED_State[1] = LED_State[1] >> 1;	
-         else
-           LED_State[1] = (LED_State[1] >> 1) | 0x100;	
-      }
+	     }
+      else if(Switch_state_buffer[8] == 2)
+	      {
+	         if(modbus_data[8] > 2048)
+	           LED_State[1] = LED_State[1] >> 1;	
+	         else
+	           LED_State[1] = (LED_State[1] >> 1) | 0x100;	
+	      }
 
 
 
@@ -2089,9 +2110,11 @@ void StorePulseToFlash( void )
 {
     temp_storepulse++;
     if(temp_storepulse==10) temp_storepulse = 0;
-	flash_write_int(FLASH_START_PULSE + temp_storepulse*2,pulse.half[temp_storepulse*2],FLASH_MEMORY);
-    flash_write_int(FLASH_START_PULSE + temp_storepulse*2+1,pulse.half[temp_storepulse*2+1],FLASH_MEMORY);
-    
+	if(GetBit(temp_storepulse,	&channel_type))
+	{
+		flash_write_int(FLASH_START_PULSE + temp_storepulse*2,pulse.half[temp_storepulse*2],FLASH_MEMORY);
+    	flash_write_int(FLASH_START_PULSE + temp_storepulse*2+1,pulse.half[temp_storepulse*2+1],FLASH_MEMORY);
+    }
 }
 
 

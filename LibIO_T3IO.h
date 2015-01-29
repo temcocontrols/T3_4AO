@@ -70,10 +70,10 @@
 #define T3_SOFTWARE_VERSION		34
 
 	sbit TX1				 = P0^0;	
-  sbit RX1				 = P0^1;
+  	sbit RX1				 = P0^1;
 	sbit TX2				 = P0^2;	
-  sbit RX2				 = P0^3;
-  sbit I2C_SDA		 = P0^4;
+  	sbit RX2				 = P0^3;
+  	sbit I2C_SDA		 = P0^4;
 	sbit I2C_SCL			 = P0^5;
  	sbit RS232STATE 		 = P0^6;
   sbit RS232STATE2 		 = P0^7;

@@ -107,6 +107,7 @@ bit read_pic_version( void)
 	} */
     pic_version = 88;
    SFRPAGE=SFRPAGESAVE;
+   return 1 ;
 }
 /*
 bit refresh_outputs (void)
