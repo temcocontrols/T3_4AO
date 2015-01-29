@@ -4,7 +4,7 @@
 #include "serial.h"
 #include "stdlib.h"
 //extern unsigned int xdata temp[8]; 
-bit flag_comm = 0;
+unsigned char xdata com_beat = 1 ;
 extern unsigned char xdata filter[10];
 unsigned char xdata Swtich_state[3];
 signed int RangeConverter(unsigned char function, signed int para,signed int cal,unsigned char i);
@@ -20,9 +20,9 @@ bit switch_to_auto  = 0;
 unsigned char xdata gucBuffer[21];
 unsigned int xdata gucZone[8];
 unsigned char xdata gucReverseOutput;
-void SetBit(unsigned int bit_number,unsigned int *byte);
-void ClearBit(unsigned int bit_number,unsigned int *byte);
-bit GetBit(unsigned int bit_number,unsigned int *byte);
+void SetBit(unsigned char bit_number,unsigned int *byte);
+void ClearBit(unsigned char bit_number,unsigned int *byte);
+bit GetBit(unsigned char bit_number,unsigned int *byte);
 extern unsigned int xdata perious_input[10]; 
 //extern unsigned int  xdata guiBuffer[10][SAMPLENUMBER];
 unsigned char xdata gucCounter[10];
@@ -38,14 +38,18 @@ extern unsigned char xdata info[20];
 //extern unsigned char xdata pic_version;
 
 unsigned char data test_register = 123 ;
-void SetBit(unsigned int bit_number,unsigned int *byte)
+
+
+
+
+void SetBit(unsigned char bit_number,unsigned int *byte)
 {
 	unsigned int mask; 
 	mask = 0x01;
 	mask = mask << bit_number;
 	*byte = *byte | mask;
 }
-void ClearBit(unsigned int bit_number,unsigned int *byte)
+void ClearBit(unsigned char bit_number,unsigned int *byte)
 {
 	unsigned int mask; 
 	mask = 0x01;
@@ -53,13 +57,13 @@ void ClearBit(unsigned int bit_number,unsigned int *byte)
  	mask = ~mask;
 	*byte = *byte & mask;
 }
-bit GetBit(unsigned int bit_number,unsigned int *byte)
+bit GetBit(unsigned char bit_number,unsigned int *byte)
 {
 	unsigned int mask; 
 	mask = 0x01;	 
 	mask = mask << bit_number;
 	return (bit)(*byte & mask);
-}
+} 
 
 void LightOutput(unsigned char overOut)
 {
@@ -70,7 +74,7 @@ void LightOutput(unsigned char overOut)
   
 	{  // RELAY0=1;RELAY1=1; RELAY2=1; RELAY3=1; RELAY4=1; 
  //tbd: MAKE A LOOP FOR THIS CODE, NOT STRIAGHT LINE CODE
-		if(GetBit(0,&guiManual) == 1 &&gucOverOutput[gucZone[0]-1] == 1)
+		if(GetBit(0,&guiManual) == 1 && gucOverOutput[gucZone[0]-1] == 1)
     // if(1)
 		{   
 		//	if (gucReverseOutput)
@@ -95,7 +99,7 @@ void LightOutput(unsigned char overOut)
     	   {
     		//if (gucReverseOutput)
     		 if(1)
-           	{
+           		{
                     RELAY1 = 1;
                     //LED_State[1] = LED_State[1] >> 1;
                 }
@@ -108,8 +112,7 @@ void LightOutput(unsigned char overOut)
                  gucStatus[1] = 1;
     		}
 		else 
-			gucStatus[1] = 0;
-	   
+			gucStatus[1] = 0;	   
         }
 	else if(overOut == 2 && gucZone[2])
 	{
@@ -311,7 +314,6 @@ void SerialPort() interrupt 4
 {
   SFRPAGE = UART0_PAGE;
   watchdog();
-	flag_comm = 1;
 	if(RI0 == 1)
 	{
 		// Make sure that you are not in SEND mode and that you do not exceed
@@ -329,30 +331,40 @@ void SerialPort() interrupt 4
 		watchdog();
     
   	 
-   if(rece_count == 1 )
+  		if(rece_count == 1 )
+		{			 
+			// This starts a timer that will reset communication.  If you do not
+			// receive the full packet, it insures that the next receive will be fresh.
+			// The timeout is roughly 7.5ms.  (3 ticks of the hearbeat)
+			packet_size = 8;
+			serial_receive_timeout_count = 5  ;
+		}
+				// need to evaluate the packet size
+		// once the sixth byte is received we can then figure out what is packet size
+		 if(rece_count == 4)
 		{
-			 
-				// This starts a timer that will reset communication.  If you do not
-				// receive the full packet, it insures that the next receive will be fresh.
-				// The timeout is roughly 7.5ms.  (3 ticks of the hearbeat)
-				packet_size = DATABUFLEN;
-				serial_receive_timeout_count = 5  ;
-
+				//check if it is a scan command
+			if((unsigned int)(data_buffer[2]<<8) + data_buffer[3] == 0x0a && data_buffer[1] == WRITE_VARIABLES)
+			{
+					
+					packet_size = 12;
+					serial_receive_timeout_count = SERIAL_RECEIVE_TIMEOUT;	
+			}
 		} 
-    if(rece_count == 7 )
+   		else if(rece_count == 7 )
 		{
-			if(data_buffer[1] == READ_VARIABLES || data_buffer[1] == WRITE_VARIABLES)
-				packet_size = 8;
-			else if(data_buffer[1] == MULTIPLE_WRITE && response_receive_finished == 0)
-				packet_size = 8;
-			else if(data_buffer[1] == MULTIPLE_WRITE)
+
+			if(data_buffer[1] == MULTIPLE_WRITE)
 				// take the quantity amount, and add 9 more for other information needed
 			{
 				packet_size = data_buffer[6] + 9;
 				serial_receive_timeout_count = packet_size;
 			}
-			else
-				packet_size = DATABUFLEN;
+		}	
+		else if(rece_count == 3 )
+		{
+			if(data_buffer[1] == CHECKONLINE)
+				packet_size = 6;
 		}
 		// As soon as you receive the final byte, switch to SEND mode
 		else if(rece_count == packet_size)		
@@ -363,11 +375,7 @@ void SerialPort() interrupt 4
 			// if was dealing with a response, must know it is done
 			response_receive_finished = 1;
 		}
-		else if(rece_count == 3 )
-		{
-			if(data_buffer[1] == CHECKONLINE)
-				packet_size = 6;
-		}
+
 
 	}
 	else if(TI0 == 1)
@@ -375,9 +383,8 @@ void SerialPort() interrupt 4
 		TI0=0;
 		transmit_finished = 1;
 	}
-	flag_comm = 0;
-  watchdog();
-  SFRPAGE = LEGACY_PAGE;
+ 	watchdog();
+    SFRPAGE = LEGACY_PAGE;
 	return;
 }
 #endif
@@ -390,43 +397,36 @@ void SerialPort() interrupt 4
 //                 3 organize the data of sending, and send data.
 
 void dealwithData(void)
-{	unsigned int address;
-	
+{	
+	unsigned int address;	
 	// given this is used in multiple places, decided to put it as an argument
 	address = (unsigned int)(data_buffer[2]<<8) + data_buffer[3];
     watchdog();
 	if (checkData(address))
-	{
-		
-
+	{		
 		// Initialize tranmission
-		initSend_COM();
-	
+		initSend_COM();	
 		// Initialize CRC
-		InitCRC16();
-	
+		InitCRC16();	
 		// Store any data being written
 		internalDeal(address);
-
 		// Respond with any data requested
 		responseData(address);
-
 		//guiDeadmasterTime = (unsigned int)(gucDeadmaster << 8); by jim
 		serial_no_activity = 1;
-		//switch_to_auto = 0; by jim
-		 
-
 	}	
-  watchdog();
+ 	 watchdog();
 	// Restart the serial receive.
 	serial_restart();
 
 }
 
+
 //---------------------checkdata ----------------------
 //This function calculates and verifies the checksum
 bit checkData(unsigned int address)
 {
+	static unsigned char xdata rand_read_ten_count = 0 ;
 	unsigned int crc_val;
 	unsigned char minaddr,maxaddr, variable_delay;
 	unsigned char i;
@@ -471,7 +471,50 @@ bit checkData(unsigned int address)
 	if( (data_buffer[1]!=READ_VARIABLES) && (data_buffer[1]!=WRITE_VARIABLES) && (data_buffer[1]!=MULTIPLE_WRITE) )
 		return FALSE;
 	// ------------------------------------------------------------------------------------------------------
-	
+		// ------------------------------------------------------------------------------------------------------
+		
+	if(data_buffer[2]*256 + data_buffer[3] ==  FLASH_ADDRESS_PLUG_N_PLAY)
+	{
+		if(data_buffer[1] == WRITE_VARIABLES)
+		{
+			if(data_buffer[6] != info[0]) 
+			return FALSE;
+			if(data_buffer[7] != info[1]) 
+			return FALSE;
+			if(data_buffer[8] != info[2])  
+			return FALSE;
+			if(data_buffer[9] != info[3]) 
+			return FALSE;
+		}
+		if (data_buffer[1] == READ_VARIABLES)
+		{
+			randval = rand() % 10 / 2 ;
+		}
+		if(randval != RESPONSERANDVALUE)
+		{
+//mhf:12-29-05 if more than 5 times does not response read register 10,reponse manuly.
+			rand_read_ten_count++;
+			if(rand_read_ten_count%5 == 0)
+			{
+				rand_read_ten_count = 0;
+				randval = RESPONSERANDVALUE;
+				variable_delay = rand() % 10;
+				for ( i=0; i<variable_delay; i++)
+					delay_us(75);
+			}
+			else
+				return FALSE;
+		}
+		else
+		{		
+			// in the TRUE case, we add a random delay such that the Interface can pick up the packets
+			rand_read_ten_count = 0;
+			variable_delay = rand() % 10;
+			for ( i=0; i<variable_delay; i++)
+				delay_us(75);				
+		}
+		
+	}
 
 	// if trying to write the Serial number, first check to see if it has been already written
 	// note this does not take count of multiple-write, thus if try to write into those reg with multiple-write, command will accept
@@ -498,37 +541,14 @@ bit checkData(unsigned int address)
 	}
 
 
-
-
-
-	// --- plug and play feature in case there are two devices in the network with the same ID --------
-/*	if(address ==  FLASH_ADDRESS_PLUG_N_PLAY)
-	{
-		if (data_buffer[1] == READ_VARIABLES)
-		{
-			randval = rand() % 5 ;
-		}
-
-		if(randval != RESPONSERANDVALUE)
-		{
-			//return FALSE;
-		}
-		else
-		{	// in the TRUE case, we add a random delay such that the Interface can pick up the packets
-			variable_delay = rand() % 20;
-			for ( i=0; i<variable_delay; i++)
-				delay_us(100);
-		}
-	} */
-	// ------------------------------------------------------------------------------------------------------
-
-
 	crc_val = CRC16(data_buffer,packet_size-2);
 
 	if(crc_val == (data_buffer[packet_size-2]<<8) + data_buffer[packet_size-1] )
 		return TRUE;
 	else
 		return FALSE;
+
+	return TRUE;
 
  } 
 
@@ -617,7 +637,23 @@ void responseData(unsigned int address)
 				SBUF0 = send_buffer;
 				transmit_finished = 0;
 				CRC16_Tstat(send_buffer);
-			}  
+			} 
+		    else if( i+address == 22 )
+			{
+				send_buffer = 0;
+
+				while (!transmit_finished){}
+				SBUF0 = send_buffer;
+				transmit_finished = 0;
+				CRC16_Tstat(send_buffer);
+
+				send_buffer = com_beat;
+
+				while (!transmit_finished){}
+				SBUF0 = send_buffer;
+				transmit_finished = 0;
+				CRC16_Tstat(send_buffer);
+			} 
       else if ( i+address < ORIGINALADDRESSVALUE )
 			{	
 				//if( !flash_read_int(address+i, &flash_data, FLASH_MEMORY) )
@@ -806,7 +842,7 @@ void responseData(unsigned int address)
 				CRC16_Tstat(send_buffer);
 			 		 
 
-                send_buffer = range[i + address-T38IO_INPUT1_RANGE] & 0xff;
+                send_buffer = range[i + address-T38IO_INPUT1_RANGE];
 				while (!transmit_finished){}
 				SBUF0 = send_buffer;
 				transmit_finished = 0;
@@ -932,6 +968,23 @@ void responseData(unsigned int address)
 								transmit_finished = 0;
 								CRC16_Tstat(send_buffer);
 				}
+				else if(i + address == 	T38IO_SERINALNUMBER_WRITE_FLAG) 
+				{
+						 	 
+								send_buffer = 0;
+								 
+								while (!transmit_finished){}
+								SBUF0 = send_buffer;
+								transmit_finished = 0;
+								CRC16_Tstat(send_buffer);
+							 
+							 
+								send_buffer = SNWriteflag;
+								while (!transmit_finished){}
+								SBUF0 = send_buffer;
+								transmit_finished = 0;
+								CRC16_Tstat(send_buffer);
+				}
 			   	else if(i + address == TEST_REGISTER) 
 				{
 						 	 	FlashRead_Absolute(6, &test_register) ;
@@ -993,8 +1046,6 @@ void responseData(unsigned int address)
 			watchdog();
 		
 		}
-	
-
 		// send the two last CRC bits
 		SBUF0 = CRChi;
 		transmit_finished = 0;
@@ -1004,9 +1055,62 @@ void responseData(unsigned int address)
 		while (!transmit_finished){}
 
 	}
- // else if(data_buffer[1] == MULTIPLE_WRITE){ }
-  else if(data_buffer[1] == CHECKONLINE){ }
-  else {}
+  else if(data_buffer[1] == CHECKONLINE)
+  { 
+  	// send first byte of information
+		send_buffer = data_buffer[0];
+		SBUF0 = send_buffer;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		CRC16_Tstat(send_buffer);
+
+		// send second byte of information
+		send_buffer = data_buffer[1];
+		SBUF0 = send_buffer;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		CRC16_Tstat(send_buffer);
+
+		// send address of device
+		send_buffer = info[6];
+		SBUF0 = send_buffer;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		CRC16_Tstat(send_buffer);
+
+		// send serie number0
+		send_buffer = info[0];
+		SBUF0 = send_buffer;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		CRC16_Tstat(send_buffer);
+		// send serie number1
+		send_buffer = info[1];
+		SBUF0 = send_buffer;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		CRC16_Tstat(send_buffer);
+		// send serie number2
+		send_buffer = info[2];
+		SBUF0 = send_buffer;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		CRC16_Tstat(send_buffer);
+		// send serie number3
+		send_buffer = info[3];
+		SBUF0 = send_buffer;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		CRC16_Tstat(send_buffer);
+		// send the two last CRC bits
+		SBUF0 = CRChi;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+		SBUF0 = CRClo;
+		transmit_finished = 0;
+		while (!transmit_finished){}
+  }
+
 }
 
 // ---------------------- internaldeal ----------------------------
@@ -1041,6 +1145,8 @@ void internalDeal(unsigned int start_address)
   				flash_write_int(FLASH_SERIALNUMBER_LOWORD+1, data_buffer[4], FLASH_MEMORY);
 				info[0] = data_buffer[5];
 				info[1] = data_buffer[4];
+				SNWriteflag |= 0x01;
+				flash_write_int(FLASH_SERINALNUMBER_WRITE_FLAG, SNWriteflag, FLASH_MEMORY);
 
 			 }
             // If writing to Serial number High word, set the Serial number High flag
@@ -1050,12 +1156,14 @@ void internalDeal(unsigned int start_address)
   				flash_write_int(FLASH_SERIALNUMBER_HIWORD+1, data_buffer[4], FLASH_MEMORY);
 			   	info[2] = data_buffer[5];
 				info[3] = data_buffer[4];
+				SNWriteflag |= 0x02;
+				flash_write_int(FLASH_SERINALNUMBER_WRITE_FLAG, SNWriteflag, FLASH_MEMORY);
 			 }
 		   else if(data_buffer[3] == FLASH_HARDWARE_REV)
 			 {	
   				flash_write_int(data_buffer[3], data_buffer[5]+ (data_buffer[4]<<8), FLASH_MEMORY);
-  				//SNWriteflag |= 0x04;
-  				//flash_write_int(EEP_SERINALNUMBER_WRITE_FLAG, SNWriteflag, FLASH_MEMORY);
+  				SNWriteflag |= 0x04;
+  				flash_write_int(EEP_SERINALNUMBER_WRITE_FLAG, SNWriteflag, FLASH_MEMORY);
   				info[8] = data_buffer[5];
 			 }
 	
@@ -1081,7 +1189,7 @@ void internalDeal(unsigned int start_address)
 			 }*/
 			 else if(data_buffer[3] == FLASH_UPDATE_STATUS )			// july 21 Ron
 			 {
-  				flash_write_int(data_buffer[3], data_buffer[5], FLASH_MEMORY);
+  			//	flash_write_int(data_buffer[3], data_buffer[5], FLASH_MEMORY);
   			//		update_flash = data_buffer[5] ;
 				info[16] = data_buffer[5] ;
 
@@ -1093,23 +1201,29 @@ void internalDeal(unsigned int start_address)
   				info[12] = data_buffer[5] ;
 			 
 			 }
-			/* else if(data_buffer[3] == FLASH_ADDRESS_PLUG_N_PLAY )
-			 {
-
-			 } */
+			else if(data_buffer[3] == FLASH_ADDRESS_PLUG_N_PLAY )
+			{
+				if(randval == RESPONSERANDVALUE)
+				{
+					flash_write_int(FLASH_ADDRESS, data_buffer[5], FLASH_MEMORY);
+					info[6] = 	data_buffer[5];	
+					iap_program_data_byte(0, DATA_TO_FIRMWARE + FLASH_ADDRESS);
+				}
+			}
 		   else if( start_address == FLASH_BAUDRATE )
 			 {
   				flash_write_int(data_buffer[3], data_buffer[5], FLASH_MEMORY);
   				info[15] = data_buffer[5];
   				if(data_buffer[5] == 1)
-      				{  SFRPAGE   = TMR4_PAGE;
+      				{  
+						SFRPAGE   = TMR4_PAGE;
                       	TMR4CN    = 0x00; 
                         TMR4CF    = 0x08; //user SYSCLK
                         RCAP4L    = 0xDC;   //set baud rate as 192000
                         RCAP4H    = 0xFF;			// RCAP2 = - ((long) SYSTEMCLOCK/BAUDRATE/16)
                         TR4= 1;            //start timer
                         EIE2 &= ~0x04;
-  					SERIAL_RECEIVE_TIMEOUT = 3;
+  						SERIAL_RECEIVE_TIMEOUT = 3;
   				}
   				else if(data_buffer[5] == 0)
   				{   SFRPAGE   = TMR4_PAGE;
@@ -1117,6 +1231,16 @@ void internalDeal(unsigned int start_address)
                     TMR4CF    = 0x08; //user SYSCLK
                     RCAP4H = 0xFF;
                     RCAP4L = 0XB8;
+                    TR4= 1;            //start timer
+                    EIE2 &= ~0x04;
+  					SERIAL_RECEIVE_TIMEOUT = 6;
+  				}
+			   	else if(data_buffer[5] == 3)
+  				{   SFRPAGE   = TMR4_PAGE;
+                	TMR4CN    = 0x00; 
+                    TMR4CF    = 0x08; //user SYSCLK
+                    RCAP4H = 0xFF;
+                    RCAP4L = 0XF4;		  //57600
                     TR4= 1;            //start timer
                     EIE2 &= ~0x04;
   					SERIAL_RECEIVE_TIMEOUT = 6;
@@ -1185,19 +1309,17 @@ void internalDeal(unsigned int start_address)
 			   { 
            
   				 temp =  start_address - T38IO_INPUT1_RANGE;
-  				 if(data_buffer[5] < 9)
+  				 if(data_buffer[5] < 20)
   				 {
   					range[temp] = data_buffer[5];	  				 
   			  		flash_write_int(FLASH_INPUT1_RANGE + temp, range[temp], FLASH_MEMORY);
-                     #if 1
                     if(data_buffer[5] == 6)//pulse input
-						{
+					{
 							SetBit(temp,&channel_type);    //if the channel set to 6, set the channel as 1
 						                                   //else set the channel as  0
-						}
+					}
 					else
 					  ClearBit(temp,&channel_type);
-                      #endif
   				 }  	
 			   }
          else if (start_address >= T38IO_INPUT1_FILTER && start_address <= T38IO_INPUT10_FILTER) // if the address is within the list of parameters
@@ -1261,22 +1383,19 @@ void internalDeal(unsigned int start_address)
         else if(start_address <= T38IO_PULSE10_MINUTE && start_address >= T38IO_PULSE1_YEAR) 
 		  	{
     			//if(start_address >= (T38IO_PULSE1_YEAR - ORIGINALADDRESSVALUE))
-    			//{
     				temp = (start_address - T38IO_PULSE1_YEAR)/5;
     				//if(GetBit(temp,&channel_type))
     				
     					if((start_address - T38IO_PULSE1_YEAR) % 5 == 0)
     					{      						
-    						//SetBit(temp ,&clear_pulse_channel);
     						pulse.word[temp] = 0;
     						//analog_filter[temp] = 0;
     						//gbClearPulse = 1;
     						//gucClearPulse = temp; 							
-    						start_timer(STORE_PULSE,1);
+    					//	start_timer(STORE_PULSE,1);
     					}
     					pulse_number[start_address - T38IO_PULSE1_YEAR] = data_buffer[5];
     				   flash_write_int(FLASH_PULSE1_YEAR+start_address - T38IO_PULSE1_YEAR, data_buffer[5], FLASH_MEMORY); 
-    			//}
 		  	}
 		else if(start_address == TEST_REGISTER )
 		{
@@ -1325,11 +1444,11 @@ void internalDeal(unsigned int start_address)
 		                 #if 1
 		                if(data_buffer[5] == 6)//pulse input
 							{
-								SetBit( temp1+i,&channel_type);    //if the channel set to 6, set the channel as 1
+								SetBit( temp1+i, &channel_type);    //if the channel set to 6, set the channel as 1
 							                                   //else set the channel as  0
 							}
 						else
-						  ClearBit( temp1+i,&channel_type);
+						  ClearBit( temp1+i, &channel_type);
 		                  #endif
 					 } 
 			 } 	
@@ -1358,8 +1477,7 @@ void internalDeal(unsigned int start_address)
      //RSTSRC |= (1 << 4); //software reset
      //iap_program_data_byte(0x55, 0xc800);//first byte of page 115
      //iap_program_data_byte(laddress, 0xc801);//first byte of page 115
-    } 
-   #if 1   
+    }   
    if (info[16] == 0x7F)
     { 
        unsigned int temp; 
@@ -1372,20 +1490,24 @@ void internalDeal(unsigned int start_address)
 		//iap_program_data_byte((unsigned char)info[i], 0XD400 + i);
         delay_us(100);
         
-	  }	
-     
+	  }	     
         EA = 0;
         RSTSRC |= (1 << 4); //software reset
-
-    } 
-    #endif
+    }
 	// --------------- reset board -------------------------------------------
-	else if (update_flash == 0xFF)
+	else if (info[16] == 0xFF)
 	{	
 		// disable the global interrupts
         EA = 0;
         RSTSRC |= (1 << 4); //software reset
 
+	}
+	else if(info[16] == 0x8e)
+	{
+		SNWriteflag = 0x00;
+		flash_write_int(FLASH_SERINALNUMBER_WRITE_FLAG, SNWriteflag, FLASH_MEMORY);
+ 		EA = 0;
+        RSTSRC |= (1 << 4); //software reset
 	}
  }
 

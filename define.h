@@ -1,6 +1,6 @@
 
 #include "T3IOmodbus.h"
-extern void SetBit(unsigned int bit_number,unsigned int *byte);
+extern void SetBit(unsigned char bit_number,unsigned int *byte);
 
 #define DEFAULT_TIMEOUT  0
 
@@ -305,7 +305,30 @@ typedef enum
 // *** high speed ****************************************************************
 #define HIGH_BUFFER		20		// arbitrarily chosen at 20
 
-
+#define TYPE2_10K_THERM	  0
+#define TYPE3_10K_THERM	  1 
+#define TYPE4_10K_THERM	  2 
+/*range define*/
+/*range define*/
+#define RAW_DATA	0
+#define C_TYPE2		1
+#define F_TYPE2		2
+#define PERCENT	  	3
+#define ON_OFF		4
+#define OFF_ON		5
+#define PULSE		6
+#define LIGHTING	7
+#define C_TYPE3		8
+#define F_TYPE3		9
+#define NO_USE		10
+#define V0_3		11
+#define V0_10		12
+#define I0_20ma		13
+#define	I0_100ma	14
+#define LM235_C	 	15
+#define LM235_F		16
+#define C_TYPE4		17
+#define F_TYPE4		18
 
 
 
