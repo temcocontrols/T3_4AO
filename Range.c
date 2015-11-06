@@ -779,3 +779,47 @@ signed int RangeConverter(unsigned char function, signed int para,signed int cal
  	return siResult;
 }
 #endif
+
+
+
+unsigned char  output_range(_OUTPUT_RANGE *range )
+ {
+
+		if(range->switch_status == SW_HAND)
+		{
+			if(range->output_mode == NORMAL_MODE)
+			{
+					return 1 ;
+					
+			}
+			else if(range->output_mode == REVERSE_MODE)
+			{
+					return 0 ;	
+			}
+		}
+		else if(range->switch_status == SW_OFF)
+		{
+			if(range->output_mode == NORMAL_MODE)
+			{
+					return 0 ;
+					
+			}
+			else if(range->output_mode == REVERSE_MODE)
+			{
+					return 1 ;	
+			}
+		}	
+		else if(range->switch_status == SW_AUTO)
+		{
+			if(range->output_mode == NORMAL_MODE)
+			{
+					if( range->output_value) return 1 ;	
+					else	return 0 ;			
+			}
+			else if(range->output_mode == REVERSE_MODE)
+			{
+					if( range->output_value) return 0 ;	
+					else	return 1 ;		
+			}
+		}
+ }

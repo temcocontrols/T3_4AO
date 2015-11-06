@@ -330,6 +330,24 @@ typedef enum
 #define C_TYPE4		17
 #define F_TYPE4		18
 
+#define  SW_OFF  0
+#define  SW_HAND 1
+#define  SW_AUTO 2
+
+
+#define DIGIT_OUTPUT 	0
+#define	ANALOG_OUTPUT 	1
+
+#define NORMAL_MODE		0
+#define REVERSE_MODE	1
+
+
+ typedef struct 
+{
+	unsigned char output_mode ;
+	unsigned char output_value ;
+	unsigned char switch_status ;
+} _OUTPUT_RANGE ; 
 
 
 

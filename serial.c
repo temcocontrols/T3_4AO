@@ -4,10 +4,12 @@
 #include "serial.h"
 #include "stdlib.h"
 //extern unsigned int xdata temp[8]; 
+unsigned char xdata Default_Setting = 0 ;
 unsigned char xdata com_beat = 1 ;
 extern unsigned char xdata filter[10];
 unsigned char xdata Swtich_state[3];
 signed int RangeConverter(unsigned char function, signed int para,signed int cal,unsigned char i);
+unsigned char  output_range(_OUTPUT_RANGE *range );
 //extern unsigned int xdata flash_data_mod[21];
 //unsigned char data temp_base_address;
 unsigned char xdata gucDeadmaster;
@@ -77,18 +79,19 @@ void LightOutput(unsigned char overOut)
 		if(GetBit(0,&guiManual) == 1 && gucOverOutput[gucZone[0]-1] == 1)
     // if(1)
 		{   
-		//	if (gucReverseOutput)
-          if(1)
-    		{		
-                RELAY0 = 1;
-                //LED_State[1] = LED_State[1] >> 1;
-             }
-    		else
-    		{		
-                RELAY0 = 0;
-               // LED_State[1] = (LED_State[1] >> 1) | 0x100;
-            }
+//		//	if (gucReverseOutput)
+//          if(1)
+//    		{		
+//                RELAY0 = 1;
+//                //LED_State[1] = LED_State[1] >> 1;
+//             }
+//    		else
+//    		{		
+//                RELAY0 = 0;
+//               // LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//            }
     			gucStatus[0] = 1;
+				RELAY0 = 1;
 		}
 		else 
 			gucStatus[0] = 0;
@@ -97,18 +100,19 @@ void LightOutput(unsigned char overOut)
 	{
 		if(GetBit(1,&guiManual) == 1 && gucOverOutput[gucZone[1]-1] == 1)
     	   {
-    		//if (gucReverseOutput)
-    		 if(1)
-           		{
-                    RELAY1 = 1;
-                    //LED_State[1] = LED_State[1] >> 1;
-                }
-    		else
-    			{
-                    RELAY1 = 0;
-                   // LED_State[1] = (LED_State[1] >> 1) | 0x100;
-    			   
-                 } 
+//    		//if (gucReverseOutput)
+//    		 if(1)
+//           		{
+//                    RELAY1 = 1;
+//                    //LED_State[1] = LED_State[1] >> 1;
+//                }
+//    		else
+//    			{
+//                    RELAY1 = 0;
+//                   // LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//    			   
+//                 }
+				RELAY1 = 1;	
                  gucStatus[1] = 1;
     		}
 		else 
@@ -118,17 +122,18 @@ void LightOutput(unsigned char overOut)
 	{
 		if(GetBit(2,&guiManual) == 1 && gucOverOutput[gucZone[2]-1] == 1)
 		{
-		//	if (gucReverseOutput)
-			 if(1)	
-                {
-                RELAY2 = 1;
-               // LED_State[1] = LED_State[1] >> 1;
-                }
-			else
-				{
-                 RELAY2 = 0;
-                // LED_State[1] = (LED_State[1] >> 1) | 0x100;
-                 }
+//		//	if (gucReverseOutput)
+//			 if(1)	
+//                {
+//                RELAY2 = 1;
+//               // LED_State[1] = LED_State[1] >> 1;
+//                }
+//			else
+//				{
+//                 RELAY2 = 0;
+//                // LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//                 }
+			RELAY2 = 1;
 			gucStatus[2] = 1;
 		}
 		else 
@@ -138,17 +143,18 @@ void LightOutput(unsigned char overOut)
 	{
 		if(GetBit(3,&guiManual) == 1 && gucOverOutput[gucZone[3]-1] == 1)
 		{
-			//if (gucReverseOutput)
-			 if(1)	
-                {
-                RELAY3 = 1;
-                //LED_State[1] = LED_State[1] >> 1;
-                }
-			else
-				{
-                    RELAY3 = 0;
-                    //LED_State[1] = (LED_State[1] >> 1) | 0x100;
-                 }
+//			//if (gucReverseOutput)
+//			 if(1)	
+//                {
+//                RELAY3 = 1;
+//                //LED_State[1] = LED_State[1] >> 1;
+//                }
+//			else
+//				{
+//                    RELAY3 = 0;
+//                    //LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//                 }
+			RELAY3 = 1;
 			gucStatus[3] = 1;
 		}
 		else 
@@ -158,17 +164,18 @@ void LightOutput(unsigned char overOut)
 	{
 		if(GetBit(4,&guiManual) == 1 && gucOverOutput[gucZone[4]-1] == 1)
 		{
-			//if (gucReverseOutput)
-			   if(1)
-        	     {
-                  RELAY4 = 1;
-                   // LED_State[1] = LED_State[1] >> 1;
-                }
-			else
-				{
-                   RELAY4 = 0;
-                  //  LED_State[1] = (LED_State[1] >> 1) | 0x100;
-                }
+//			//if (gucReverseOutput)
+//			   if(1)
+//        	     {
+//                  RELAY4 = 1;
+//                   // LED_State[1] = LED_State[1] >> 1;
+//                }
+//			else
+//				{
+//                   RELAY4 = 0;
+//                  //  LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//                }
+			RELAY4 = 1;
 			gucStatus[4] = 1;
 		}
 		else 
@@ -179,18 +186,19 @@ void LightOutput(unsigned char overOut)
 	{
 		if(GetBit(5,&guiManual) == 1 && gucOverOutput[gucZone[5]-1] == 1)
 		{
-			//if (gucReverseOutput)
-			   if(1)	
-                {
-                RELAY5 = 1;
-               // LED_State[1] = LED_State[1] >> 1;
-			    }
-           else     
-               {
-				RELAY5 = 0;
-			
-               // LED_State[1] = (LED_State[1] >> 1) | 0x100;
-                }
+//			//if (gucReverseOutput)
+//			   if(1)	
+//                {
+//                RELAY5 = 1;
+//               // LED_State[1] = LED_State[1] >> 1;
+//			    }
+//           else     
+//               {
+//				RELAY5 = 0;
+//			
+//               // LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//                }
+				RELAY5 = 1;
                 gucStatus[5] = 1;
 		}
 		else 
@@ -201,17 +209,18 @@ void LightOutput(unsigned char overOut)
 	{
 		if(GetBit(6,&guiManual) == 1 && gucOverOutput[gucZone[6]-1] == 1)
 		{
-			//if (gucReverseOutput)
-			  if(1)
-            {
-        	    RELAY6 = 1;
-                //LED_State[1] = LED_State[1] >> 1;
-             }
-			else
-				{
-                    RELAY6 = 0;
-                    //LED_State[1] = (LED_State[1] >> 1) | 0x100;
-		        }
+//			//if (gucReverseOutput)
+//			  if(1)
+//            {
+//        	    RELAY6 = 1;
+//                //LED_State[1] = LED_State[1] >> 1;
+//             }
+//			else
+//				{
+//                    RELAY6 = 0;
+//                    //LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//		        }
+				RELAY6 = 1;
                	gucStatus[6] = 1;
 		}
 		else 
@@ -221,17 +230,18 @@ void LightOutput(unsigned char overOut)
 	{
 		if(GetBit(7,&guiManual) == 1 && gucOverOutput[gucZone[7]-1] == 1)
 		{
-			//if (gucReverseOutput)
-			  if(1)
-            {	
-                RELAY7 = 1;
-               // LED_State[1] = LED_State[1] >> 1;
-	         }
-			else
-			{
-        	    RELAY7 = 0;
-                //LED_State[1] = (LED_State[1] >> 1) | 0x100;
-             }
+//			//if (gucReverseOutput)
+//			  if(1)
+//            {	
+//                RELAY7 = 1;
+//               // LED_State[1] = LED_State[1] >> 1;
+//	         }
+//			else
+//			{
+//        	    RELAY7 = 0;
+//                //LED_State[1] = (LED_State[1] >> 1) | 0x100;
+//             }
+			RELAY7 = 1;
 			gucStatus[7] = 1;
 		}
 		else 
@@ -558,7 +568,6 @@ bit checkData(unsigned int address)
 void responseData(unsigned int address)
 
 {
-	unsigned int flash_data;
 	unsigned char num, send_buffer;
 	unsigned char i=0;
 	bit read_time_pulse = 0;
@@ -756,25 +765,25 @@ void responseData(unsigned int address)
                     if((i + address - T38IO_PULSE1_HI_WORD) %2 ==0)
                     {
                         send_buffer =0;
-        				while (!transmit_finished){}
-        				SBUF0 = send_buffer;
-        				transmit_finished = 0;
-        				CRC16_Tstat(send_buffer);				
-        
-        				send_buffer = 0;
-                       // send_buffer=100;
-        				while (!transmit_finished){}
-        				SBUF0 = send_buffer;
-        				transmit_finished = 0;
-        				CRC16_Tstat(send_buffer);
+												while (!transmit_finished){}
+												SBUF0 = send_buffer;
+												transmit_finished = 0;
+												CRC16_Tstat(send_buffer);				
+								
+												send_buffer = 0;
+															 // send_buffer=100;
+												while (!transmit_finished){}
+												SBUF0 = send_buffer;
+												transmit_finished = 0;
+												CRC16_Tstat(send_buffer);
                     }
                     else
                     {
                         send_buffer = (guiAnalogInput[(i + address -T38IO_PULSE1_HI_WORD)/2] >> 8) & 0xFF;
-        				while (!transmit_finished){}
-        				SBUF0 = send_buffer;
-        				transmit_finished = 0;
-        				CRC16_Tstat(send_buffer);				
+												while (!transmit_finished){}
+												SBUF0 = send_buffer;
+												transmit_finished = 0;
+												CRC16_Tstat(send_buffer);				
         
         				send_buffer = guiAnalogInput[(i + address - T38IO_PULSE1_HI_WORD)/2] & 0xFF;
                        // send_buffer=100;
@@ -944,7 +953,7 @@ void responseData(unsigned int address)
 								transmit_finished = 0;
 								CRC16_Tstat(send_buffer);
 							 
-								send_buffer = flash_data & 0Xff;
+								send_buffer = gucReverseOutput ;
 								while (!transmit_finished){}
 								SBUF0 = send_buffer;
 								transmit_finished = 0;
@@ -985,23 +994,40 @@ void responseData(unsigned int address)
 								transmit_finished = 0;
 								CRC16_Tstat(send_buffer);
 				}
-			   	else if(i + address == TEST_REGISTER) 
-				{
-						 	 	FlashRead_Absolute(6, &test_register) ;
-								
-								send_buffer = 0; 
-								while (!transmit_finished){}
-								SBUF0 = send_buffer;
-								transmit_finished = 0;
-								CRC16_Tstat(send_buffer);
-							 
-							 
-								send_buffer = test_register;
-								while (!transmit_finished){}
-								SBUF0 = send_buffer;
-								transmit_finished = 0;
-								CRC16_Tstat(send_buffer);
-				}
+//				else if(i + address == 	T38IO_DEFAULT_SETTING) 
+//				{
+//						 	 
+//								send_buffer = 0;
+//								 
+//								while (!transmit_finished){}
+//								SBUF0 = send_buffer;
+//								transmit_finished = 0;
+//								CRC16_Tstat(send_buffer);
+//							 
+//							 
+//								send_buffer = Default_Setting;
+//								while (!transmit_finished){}
+//								SBUF0 = send_buffer;
+//								transmit_finished = 0;
+//								CRC16_Tstat(send_buffer);
+//				}
+//			   	else if(i + address == TEST_REGISTER) 
+//				{
+//						 	 	FlashRead_Absolute(6, &test_register) ;
+//								
+//								send_buffer = 0; 
+//								while (!transmit_finished){}
+//								SBUF0 = send_buffer;
+//								transmit_finished = 0;
+//								CRC16_Tstat(send_buffer);
+//							 
+//							 
+//								send_buffer = test_register;
+//								while (!transmit_finished){}
+//								SBUF0 = send_buffer;
+//								transmit_finished = 0;
+//								CRC16_Tstat(send_buffer);
+//				}
 
 
 	    else
@@ -1397,13 +1423,23 @@ void internalDeal(unsigned int start_address)
     					pulse_number[start_address - T38IO_PULSE1_YEAR] = data_buffer[5];
     				   flash_write_int(FLASH_PULSE1_YEAR+start_address - T38IO_PULSE1_YEAR, data_buffer[5], FLASH_MEMORY); 
 		  	}
-		else if(start_address == TEST_REGISTER )
-		{
-			iap_erase_page(0);
-			test_register = data_buffer[5];
-			iap_program_data_RAM(test_register, 6);
-		//	EA	= 0 ;
-		}
+				else if(start_address == T38IO_DEFAULT_SETTING )
+				{
+							if( data_buffer[5] == 1)
+							{
+									   for(i = 0;i < 10;i++) 
+										{				 
+											range[i] = 0;	
+											flash_write_int(FLASH_INPUT1_RANGE+ i, range[i], FLASH_MEMORY); 
+										}
+							}				
+				}
+//		else if(start_address == TEST_REGISTER )
+//		{
+//			iap_erase_page(0);
+//			test_register = data_buffer[5];
+//			iap_program_data_RAM(test_register, 6);
+//		}
         
       }
 

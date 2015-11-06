@@ -335,21 +335,21 @@ bit GET_ACK( void )
 	    return 1;
 	}
 
-	else
-	{
-	    I2C_SDA=1;
-	    I2C_SCL=1;
-	    for (i=0; i<10; i++)
-	    {
-			c=I2C_SDA;
-			if (c == 0){
-			    I2C_SCL=0;
-				return 0;
-			}		
-	    }
-	    I2C_SCL=0;
-	    return 1;
-	}
+//	else
+//	{
+//	    I2C_SDA=1;
+//	    I2C_SCL=1;
+//	    for (i=0; i<10; i++)
+//	    {
+//			c=I2C_SDA;
+//			if (c == 0){
+//			    I2C_SCL=0;
+//				return 0;
+//			}		
+//	    }
+//	    I2C_SCL=0;
+//	    return 1;
+//	}
 }
 void i2c_stop()
 {

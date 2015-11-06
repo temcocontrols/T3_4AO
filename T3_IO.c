@@ -22,6 +22,7 @@ extern unsigned char xdata Swtich_state[3];
  //int xdata guiBuffer_old[10]={1023,1023,1023,1023,1023,1023,1023,1023,256,256};
 unsigned int xdata guiBuffer_old[10]={0,0,0,0,0,0,0,0,0,0};
 extern signed int RangeConverter(unsigned char function, signed int para,signed int cal,unsigned char i);
+extern unsigned char  output_range(_OUTPUT_RANGE *range ) ;
 void LightOutput(unsigned char overOut);
 unsigned int xdata perious_input[10]={4095,4095,4095,4095,4095,4095,4095,4095,4095,4095};
 //unsigned int xdata test_timer;
@@ -42,11 +43,6 @@ unsigned char xdata info[20];
 bit baudrate_flag = 0; 
 sfr16 DAC0     = 0xd2;                 // DAC0 data
 sfr16 DAC1     = 0xd2;                 // DAC1 data
-// timer0: timer
-// timer1: uart0
-// timer2: ADC0,ADC2   
-// timer3: DAC
-// timer4: uart0   
 
 
 void Main_Oscillator_Init(void)
@@ -269,19 +265,18 @@ void Main_System_Init(void)
 
 void timer0(void) interrupt 1 
 {
-	static unsigned int xdata com_count =0; 
+	//static unsigned int xdata com_count =0; 
    char SFRPAGE_SAVE = SFRPAGE;        // Save Current SFR page 
    TL0 = 0x66;     //interal :1ms
    TH0 = 0xfc;
-
    heart_beat++;  
 
    D16_Flash_Pulse++;
-   if(D16_Flash_Pulse >500)
+   if(D16_Flash_Pulse >1000)
    {
       D16_Flash_Pulse = 0;
       D16_Flash = ~D16_Flash;
-      }                
+   }                
      
    new_heartbeat = TRUE;
    LED_bank++;
@@ -290,20 +285,16 @@ void timer0(void) interrupt 1
      LED_bank = 1;  
    }
   refresh_LEDs();
-  com_count++ ;
-  if(com_count>= 12000)
-	{
-		com_count = 0 ;
-		com_beat++ ;
-	}
-  // High_speed_count = ~High_speed_count;
+//  com_count++ ;
+//  if(com_count>= 12000)
+//	{
+//		com_count = 0 ;
+//		com_beat++ ;
+//	}
+
    SFRPAGE   = CONFIG_PAGE;
-  // read_pic();
- // watchdog();
    SFRPAGE = SFRPAGE_SAVE;
-   //SFRPAGE = ADC2_PAGE; 
-   //ADC2CN |= 0x10;
-  // SFRPAGE = SFRPAGE_SAVE;
+
    
  }	
 
@@ -413,7 +404,7 @@ void main_flash_init(void)
 		flash_write_int(FLASH_SERINALNUMBER_WRITE_FLAG, pulse_buf, FLASH_MEMORY);   
 	}
 	SNWriteflag = pulse_buf;	  
-  flash_write_int(FLASH_SOFTWARE_VERSION_NUMBER, 28, FLASH_MEMORY);
+  flash_write_int(FLASH_SOFTWARE_VERSION_NUMBER, 30, FLASH_MEMORY);
   flash_write_int(FLASH_PRODUCT_MODEL, 28, FLASH_MEMORY);
   flash_write_int(FLASH_HARDWARE_REV,14, FLASH_MEMORY);
   flash_write_int(FLASH_PIC_VERSION, 1, FLASH_MEMORY);
@@ -505,7 +496,7 @@ void Main_Data_init(void)
 
   dac = 0;
   High_speed_count = 0;
-  D16_Flash = 0;
+//  D16_Flash = 0;
   SFRPAGE = LEGACY_PAGE;
 
  	for(Loop = 0;Loop < 50;Loop++)
@@ -555,7 +546,7 @@ void Main_Data_init(void)
    for(Loop = 0;Loop < 10;Loop++) //input
 	{	
 		if(!flash_read_int(FLASH_INPUT1_RANGE + Loop,&pulse_buf,FLASH_MEMORY))			 
-			range[Loop] = 0;	
+			range[Loop] = NO_USE;	
 		else
 		{
 			range[Loop] = pulse_buf;
@@ -664,9 +655,17 @@ void main (void)
 	{ 
     watchdog();
 
+
 		if(new_heartbeat) 
 		{ 
-		  new_heartbeat = FALSE;
+		 
+			new_heartbeat = FALSE;
+//			LED_bank++;
+//			if(LED_bank > MAX_LED_BANK)
+//			{
+//					LED_bank = 1;  
+//			}
+//				refresh_LEDs(); 
 			if (serial_receive_timeout_count > 0)
 			{
 				serial_receive_timeout_count--;
@@ -691,7 +690,7 @@ void main (void)
     	watchdog ( ) ; 
         
       tabulate_LED_STATE();
-     // refresh_LEDs();   
+  
     	// For each event timer, reduce the remaining number of ticks by one.
     	// If the number of ticks has reached 0, push the event into the event queue
     	for(timer_no =0; timer_no < TOTAL_TIMERS; timer_no++)
@@ -720,9 +719,15 @@ void main (void)
   			switch(event_queue[event_count])
   			{   
            case REFRESH_OUTPUTS :
-                                 refresh_inputs();
-                      			 start_timer(REFRESH_OUTPUTS , DEFAULT_TIMEOUT );
-                    			 break;
+//											D16_Flash_Pulse++ ;
+//											if(D16_Flash_Pulse == 10)
+//											{
+//													D16_Flash = ~D16_Flash ;
+//													D16_Flash_Pulse = 0 ;
+//											}
+											 refresh_inputs();
+											 start_timer(REFRESH_OUTPUTS , DEFAULT_TIMEOUT );
+										 break;
    
              // keep looking for pic until one has been found                     
            case REFRESH_INPUTS : 	watchdog();
@@ -1021,9 +1026,7 @@ void main (void)
 }                                     
 
 
-#define  SW_OFF  0
-#define  SW_HAND 1
-#define  SW_AUTO 2
+
 
 
 
@@ -1585,35 +1588,30 @@ void refresh_LEDs(void)
   switch (LED_bank)
 	{
      case 1:    
-                LED_DRIVE2 = 1;
-        		LED_DRIVE3 = 1;
-                //delay_us(2);
-                
+               // LED_DRIVE2 = 1;
+								LED_DRIVE3 = 1;               
                 LED8= LED_State[0]&BIT8;
                 LED_DRIVE1 = 0;
-                //LED_State[0]=0;
                 P3 = (char)LED_State[0];
                 
                 break;
     case 2:     LED_DRIVE1 = 1;
-                LED_DRIVE3 = 1; 
-                //delay_us(2);
+                //LED_DRIVE3 = 1; 
                 
-                
+            
                 LED8 = LED_State[1]&BIT8;
                 LED_DRIVE2 = 0; 
                 P3 = (char)LED_State[1];
                
                 break;
      
-     case 3:    LED_DRIVE1 = 1;
-        		LED_DRIVE2 = 1;
-                //delay_us(2);
-               
+     case 3:    
+								//LED_DRIVE1 = 1;
+								LED_DRIVE2 = 1;              
                 LED8 = LED_State[2]&BIT8;
-                 LED_DRIVE3 = 0;
+                LED_DRIVE3 = 0;
                 P3 = (char)LED_State[2];
-               
+              
                 break; 
      default:   break;
    }
@@ -1622,8 +1620,7 @@ void refresh_LEDs(void)
 
 void tabulate_LED_STATE(void)    //add modbus data;
 {
-    //unsigned char by_loop;
-    //bit LED_flag;
+    _OUTPUT_RANGE 	CONTROL ;
     char SFRPAGE_SAVE = SFRPAGE;
     SFRPAGE = CONFIG_PAGE;
   	ET0 =0;
@@ -1789,28 +1786,36 @@ void tabulate_LED_STATE(void)    //add modbus data;
     if(Switch_state_buffer[0] == 0)
       {
         LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-        RELAY7 = 0;
+      //  RELAY7 = 0;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY7 = output_range(&CONTROL) ;	
       }
       else if(Switch_state_buffer[0] == 1)
       {
         LED_State[1] = LED_State[1] >> 1;	// relay is ON
-        RELAY7 = 1;  
+       // RELAY7 = 1;  
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY7 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[0] == 2)
       {  //if(rang_flag== 0)
          //{
-         if(modbus_data[0] > 0)
-          {
-           // LED_State[1] = LED_State[1] >> 1;	// relay is ON
-            RELAY7 = 1;
-          }
-         else
-         {
-           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-           RELAY7 = 0;                           
-         } 
+//         if(modbus_data[0] > 0)
+//          {
+
+//            RELAY7 = 1;
+//          }
+//         else
+//         {
+//           RELAY7 = 0;                           
+//         } 
          //}                              
-         
+        CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[0]	 ;  
+		RELAY7 = output_range(&CONTROL) ;
           LightOutput(7);   //light control
           if(RELAY7 == 1) LED_State[1] = LED_State[1] >> 1;
           else LED_State[1] = (LED_State[1] >> 1) | 0x100;
@@ -1819,28 +1824,38 @@ void tabulate_LED_STATE(void)    //add modbus data;
       if(Switch_state_buffer[1] == 0)
       {
         LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-        RELAY6 = 0;
+//        RELAY6 = 0;
+		 CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY6 = output_range(&CONTROL) ;
       }
       else if(Switch_state_buffer[1] == 1)
       {
         LED_State[1] = LED_State[1] >> 1;	// relay is ON
-        RELAY6 = 1;  
+//        RELAY6 = 1;  
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY6 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[1] == 2)
       {
-        //if(rang_flag== 0)
-       // {
-        if(modbus_data[1] >0)
-          {
-            //LED_State[1] = LED_State[1] >> 1;	// relay is ON
-            RELAY6 = 1;
-          }
-         else
-         {
-           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-           RELAY6 =0;                           
-         }                                        
-        //}
+//        //if(rang_flag== 0)
+//       // {
+//        if(modbus_data[1] >0)
+//          {
+//            //LED_State[1] = LED_State[1] >> 1;	// relay is ON
+//            RELAY6 = 1;
+//          }
+//         else
+//         {
+//           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
+//           RELAY6 =0;                           
+//         }                                        
+//        //}
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[1]	 ;  
+		RELAY6 = output_range(&CONTROL) ;
          LightOutput(6); 
           if(RELAY6 == 1) LED_State[1] = LED_State[1] >> 1;
           else LED_State[1] = (LED_State[1] >> 1) | 0x100;
@@ -1849,28 +1864,40 @@ void tabulate_LED_STATE(void)    //add modbus data;
       if(Switch_state_buffer[2] == 0)
       {
         LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-        RELAY5 = 0;
+//        RELAY5 = 0;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY5 = output_range(&CONTROL) ;
       }
       else if(Switch_state_buffer[2] == 1)
       {
         LED_State[1] = LED_State[1] >> 1;	// relay is ON
-        RELAY5 = 1;  
+//        RELAY5 = 1; 
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY5 = output_range(&CONTROL) ;
+			
       }
       else if(Switch_state_buffer[2] == 2)
       {
-        // if(rang_flag== 0)
-        // {
-         if(modbus_data[2] > 0)
-          {
-            //LED_State[1] = LED_State[1] >> 1;	// relay is ON
-            RELAY5 = 1;
-          }
-         else
-         {
-           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-           RELAY5 = 0;                           
-         } 
-        // }                              
+//        // if(rang_flag== 0)
+//        // {
+//         if(modbus_data[2] > 0)
+//          {
+//            //LED_State[1] = LED_State[1] >> 1;	// relay is ON
+//            RELAY5 = 1;
+//          }
+//         else
+//         {
+//           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
+//           RELAY5 = 0;                           
+//         } 
+//        // } 
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[2]	 ;  
+		RELAY5 = output_range(&CONTROL) ;	
+		  
          LightOutput(5);
            if(RELAY5 == 1) LED_State[1] = LED_State[1] >> 1;
           else LED_State[1] = (LED_State[1] >> 1) | 0x100;
@@ -1879,28 +1906,38 @@ void tabulate_LED_STATE(void)    //add modbus data;
       if(Switch_state_buffer[3] == 0)
       {
         LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-        RELAY4 = 0;
+//        RELAY4 = 0;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY4 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[3] == 1)
       {
         LED_State[1] = LED_State[1] >> 1;	// relay is ON
-        RELAY4 = 1;  
+//        RELAY4 = 1;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY4 = output_range(&CONTROL) ; 	
       }
       else if(Switch_state_buffer[3] == 2)
       {  
-        // if(rang_flag== 0)
-        // {
-         if(modbus_data[3] > 0)
-          {
-            //LED_State[1] = LED_State[1] >> 1;	// relay is ON
-            RELAY4 = 1;
-          }
-         else
-         {
-           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-           RELAY4 = 0;                           
-         } 
-        // }                              
+//        // if(rang_flag== 0)
+//        // {
+//         if(modbus_data[3] > 0)
+//          {
+//            //LED_State[1] = LED_State[1] >> 1;	// relay is ON
+//            RELAY4 = 1;
+//          }
+//         else
+//         {
+//           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
+//           RELAY4 = 0;                           
+//         } 
+//        // } 
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[3]	 ;  
+		RELAY4 = output_range(&CONTROL) ;  
         LightOutput(4);
           if(RELAY4 == 1) LED_State[1] = LED_State[1] >> 1;
           else LED_State[1] = (LED_State[1] >> 1) | 0x100;
@@ -1910,28 +1947,38 @@ void tabulate_LED_STATE(void)    //add modbus data;
       if(Switch_state_buffer[4] == 0)
       {
         LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-        RELAY3 = 0;
+//        RELAY3 = 0;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY3 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[4] == 1)
       {
         LED_State[1] = LED_State[1] >> 1;	// relay is ON
-        RELAY3 = 1;  
+//        RELAY3 = 1;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY3 = output_range(&CONTROL) ; 	
       }
       else if(Switch_state_buffer[4] == 2)
       {
         // if(rang_flag== 0)
         // {
-         if(modbus_data[4] > 0)
-          {
-           // LED_State[1] = LED_State[1] >> 1;	// relay is ON
-            RELAY3 = 1;
-          }
-         else
-         {
-           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
-           RELAY3 = 0;                           
-         } 
-       // }                              
+//         if(modbus_data[4] > 0)
+//          {
+//           // LED_State[1] = LED_State[1] >> 1;	// relay is ON
+//            RELAY3 = 1;
+//          }
+//         else
+//         {
+//           //LED_State[1] = (LED_State[1] >> 1) | 0x100;	// relay is OFF
+//           RELAY3 = 0;                           
+//         } 
+       // }
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[4]	 ;  
+		RELAY3 = output_range(&CONTROL) ; 	
         LightOutput(3);
           if(RELAY3 == 1) LED_State[1] = LED_State[1] >> 1;
           else LED_State[1] = (LED_State[1] >> 1) | 0x100;
@@ -1978,28 +2025,38 @@ void tabulate_LED_STATE(void)    //add modbus data;
     if(Switch_state_buffer[5] == 0)
       {
         LED_State[2] = (LED_State[2] >> 1) | 0x100;	// relay is OFF
-        RELAY2 = 0;
+//        RELAY2 = 0;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY2 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[5] == 1)
       {
         LED_State[2] = LED_State[2] >> 1;	// relay is ON
-        RELAY2 = 1;  
+//        RELAY2 = 1;  
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY2 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[5] == 2)
       {  
-         //if(rang_flag== 0)
-        // {
-         if(modbus_data[5] > 0)
-          {
-           // LED_State[2] = LED_State[2] >> 1;	// relay is ON
-            RELAY2 = 1;
-          }
-         else
-         {
-           //LED_State[2] = (LED_State[2] >> 1) | 0x100;	// relay is OFF
-           RELAY2 = 0;                           
-         } 
-       // }                              
+//         //if(rang_flag== 0)
+//        // {
+//         if(modbus_data[5] > 0)
+//          {
+//           // LED_State[2] = LED_State[2] >> 1;	// relay is ON
+//            RELAY2 = 1;
+//          }
+//         else
+//         {
+//           //LED_State[2] = (LED_State[2] >> 1) | 0x100;	// relay is OFF
+//           RELAY2 = 0;                           
+//         } 
+       // }  
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[5]	 ;  
+		RELAY2 = output_range(&CONTROL) ;   
         LightOutput(2);
           if(RELAY2 == 1) LED_State[2] = LED_State[2] >> 1;
           else LED_State[2] = (LED_State[2] >> 1) | 0x100;
@@ -2008,28 +2065,38 @@ void tabulate_LED_STATE(void)    //add modbus data;
       if(Switch_state_buffer[6] == 0)
       {
         LED_State[2] = (LED_State[2] >> 1) | 0x100;	// relay is OFF
-        RELAY1 = 0;
+//        RELAY1 = 0;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY1 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[6] == 1)
       {
         LED_State[2] = LED_State[2] >> 1;	// relay is ON
-        RELAY1 = 1;  
+//        RELAY1 = 1;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY1 = output_range(&CONTROL) ;  	
       }
       else if(Switch_state_buffer[6] == 2)
       {  
-         //if(rang_flag== 0)
-         //{
-         if(modbus_data[6] > 0)
-          {
-           // LED_State[2] = LED_State[2] >> 1;	// relay is ON
-            RELAY1 = 1;
-          }
-         else
-         {
-          // LED_State[2] = (LED_State[2] >> 1) | 0x100;	// relay is OFF
-           RELAY1 = 0;                           
-         }                                        
-         //}
+//         //if(rang_flag== 0)
+//         //{
+//         if(modbus_data[6] > 0)
+//          {
+//           // LED_State[2] = LED_State[2] >> 1;	// relay is ON
+//            RELAY1 = 1;
+//          }
+//         else
+//         {
+//          // LED_State[2] = (LED_State[2] >> 1) | 0x100;	// relay is OFF
+//           RELAY1 = 0;                           
+//         }                                        
+//         //}
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[6]	 ;  
+		RELAY1 = output_range(&CONTROL) ;
        LightOutput(1);
            if(RELAY1 == 1) LED_State[2] = LED_State[2] >> 1;
           else LED_State[2] = (LED_State[2] >> 1) | 0x100;
@@ -2039,27 +2106,36 @@ void tabulate_LED_STATE(void)    //add modbus data;
       if(Switch_state_buffer[7] == 0)
       {
         LED_State[2] = (LED_State[2] >> 1) | 0x100;	// relay is OFF
-        RELAY0 = 0;
+//        RELAY0 = 0;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_OFF	 ; 
+		RELAY0 = output_range(&CONTROL) ;  
       }
       else if(Switch_state_buffer[7] == 1)
       {
         LED_State[2] = LED_State[2] >> 1;	// relay is ON
-        RELAY0 = 1;  
+//        RELAY0 = 1;
+		CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_HAND	 ; 
+		RELAY0 = output_range(&CONTROL) ;  		  
       }
       else if(Switch_state_buffer[7] == 2)
       {
         
-         if(modbus_data[7] > 0)
-          {
-            
-            RELAY0 = 1;
-          }
-         else
-         {
-           
-           RELAY0 = 0;                           
-         } 
-                                      
+//         if(modbus_data[7] > 0)
+//          {
+//            
+//            RELAY0 = 1;
+//          }
+//         else
+//         {
+//           
+//           RELAY0 = 0;                           
+//         } 
+        CONTROL.output_mode =  	gucReverseOutput;
+		CONTROL.switch_status =  SW_AUTO	 ;
+		CONTROL.output_value =  modbus_data[7]	 ;  
+		RELAY0 = output_range(&CONTROL) ;                           
            LightOutput(0);
           if(RELAY0 == 1) LED_State[2] = LED_State[2] >> 1;
           else LED_State[2] = (LED_State[2] >> 1) | 0x100;
